@@ -61,7 +61,7 @@ The executable `laplace_solver` accepts two command-line arguments:
 2. **Iteration Method**: Numerical method to use for solving:
    - `0`: Jacobi iteration
    - `1`: Red-Black Gauss-Seidel iteration
-# Example
+### Example
 ```bash
 mpirun -np 4 ./laplace_solver 1024 0
 ```
