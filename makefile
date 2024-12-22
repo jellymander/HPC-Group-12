@@ -3,11 +3,11 @@ NVCC = nvcc
 TARGET = laplace_solver
 
 # 设置CUDA相关的编译和链接标志
-CUDA_FLAGS = -arch=sm_60 # 测试显卡为 Nvidia Tesla P4, 更新架构的显卡可以使用更高的参数
+CUDA_FLAGS = -arch=sm_89 # 测试显卡为 GEFORCE 4060 Ti, 更新架构的显卡可以使用更高的参数
 CUDA_LIBS = -lcudart -lm
 CFLAGS = -O3 -Wall
-LDFLAGS = -L/usr/local/cuda-11.8/lib64 # 测试版本为 CUDA-11.8, 更换测试平台时注意更换路径
-INCLUDES = -I/usr/local/cuda-11.8/include
+LDFLAGS = -L/usr/local/cuda-12.6/targets/x86_64-linux/lib # 测试版本为 CUDA-12.6, 更换测试平台时注意更换路径
+INCLUDES = -I/usr/local/cuda-12.6/targets/x86_64-linux/include
 
 all: $(TARGET)
 

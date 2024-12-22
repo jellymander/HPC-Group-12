@@ -3,6 +3,7 @@
 #include <math.h>
 #include <stdio.h>
 
+
 #define BLOCK_SIZE 32
 
 // CUDA 内核：执行红黑点 Gauss-Seidel 迭代的更新
@@ -18,10 +19,11 @@ __global__ void gauss_seidel_update(float *u, float *new_u, int Nx, int Ny, floa
     int bid = blockIdx.y * gridDim.x + blockIdx.x; // Block 在 Grid 中的相对位置
 
     thread_diff[tid] = 0.0; // 初始化
+	double temp=u[i * (Ny + 2) + j];
     // printf("!\n");
     // 红点更新
     if ((i + j) % 2 == flag) {
-        new_u[i * (Ny + 2) + j] = 0.25 * (
+        u[i * (Ny + 2) + j] = 0.25 * (
             u[(i - 1) * (Ny + 2) + j] + u[(i + 1) * (Ny + 2) + j] +
             u[i * (Ny + 2) + (j - 1)] + u[i * (Ny + 2) + (j + 1)]
         ); // 红点更新
@@ -35,7 +37,7 @@ __global__ void gauss_seidel_update(float *u, float *new_u, int Nx, int Ny, floa
     //     ); // 黑点更新
     // }
 
-    float diff = fabs(new_u[i * (Ny + 2) + j] - u[i * (Ny + 2) + j]);
+    float diff = fabs(u[i * (Ny + 2) + j] -temp);
     thread_diff[tid] = diff;
     __syncthreads(); // 计算迭代 diff，所有线程同步
 
@@ -65,33 +67,33 @@ extern "C" void cuda_gauss_seidel(float *u, float *new_u, int local_Nx, int loca
     dim3 block(BLOCK_SIZE, BLOCK_SIZE); // 分配 Block 规模
     dim3 grid(local_Nx / BLOCK_SIZE, local_Ny / BLOCK_SIZE); // 分配 Grid 规模
     
-    float *d_u, *d_new_u, *d_local_diff; //定义 Device 上的 u, new_u, local_diff
+    float *d_u, *d_local_diff; //定义 Device 上的 u, new_u, local_diff
 
     size_t u_size = (local_Nx + 2) * (local_Ny + 2) * sizeof(float); // d_u, d_new_u 的内存空间
     size_t l_diff_size = local_Nx / BLOCK_SIZE * local_Ny / BLOCK_SIZE * sizeof(float); // d_local_diff 的内存空间
 
     cudaMalloc((void **)&d_u, u_size);
-    cudaMalloc((void **)&d_new_u, u_size);
+    //cudaMalloc((void **)&d_new_u, u_size);
     cudaMalloc((void **)&d_local_diff, l_diff_size); // cudaMalloc 分配 Device 上的内存空间
 
     cudaMemcpy(d_u, u, u_size, cudaMemcpyHostToDevice); // 数组 u, Host 到 Device 初始化
-    cudaMemcpy(d_new_u, new_u, u_size, cudaMemcpyHostToDevice); // 数组 new_u, Host 到 Device 初始化
+    //cudaMemcpy(d_new_u, new_u, u_size, cudaMemcpyHostToDevice); // 数组 new_u, Host 到 Device 初始化
     cudaMemset(d_local_diff, 0, l_diff_size); // 数组 d_local_diff, 初始化为0
 
     int flag = 0;
-    gauss_seidel_update<<<grid, block>>>(d_u, d_new_u, local_Nx, local_Ny, d_local_diff, flag); // 红黑点 Gauss-Seidel 迭代，执行 kernel
+    gauss_seidel_update<<<grid, block>>>(d_u, d_u, local_Nx, local_Ny, d_local_diff, flag); // 红黑点 Gauss-Seidel 迭代，执行 kernel
     flag = 1;
-    gauss_seidel_update<<<grid, block>>>(d_new_u, d_new_u, local_Nx, local_Ny, d_local_diff, flag); // 红黑点 Gauss-Seidel 迭代，执行 kernel
+    gauss_seidel_update<<<grid, block>>>(d_u, d_u, local_Nx, local_Ny, d_local_diff, flag); // 红黑点 Gauss-Seidel 迭代，执行 kernel
 
     cudaError_t err = cudaGetLastError(); // 确认kernel是否成功执行
     if (err != cudaSuccess) {
         printf("CUDA kernel error: %s\n", cudaGetErrorString(err));
     }
 
-    cudaMemcpy(new_u, d_new_u, u_size, cudaMemcpyDeviceToHost); // 数组 new_u, Device 到 Host 更新
+    cudaMemcpy(new_u, d_u, u_size, cudaMemcpyDeviceToHost); // 数组 new_u, Device 到 Host 更新
     cudaMemcpy(local_diff, d_local_diff, l_diff_size, cudaMemcpyDeviceToHost); // 数组 local_diff, Device 到 Host 更新
 
     cudaFree(d_u);
-    cudaFree(d_new_u);
+    //cudaFree(d_new_u);
     cudaFree(d_local_diff); // 释放 Device 内存空间
 }
